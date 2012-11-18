@@ -97,16 +97,14 @@ def count_frequent_two_seq(id_list,support_threshold):
 
     counts = {}
     
-    for sid in horizontal_db.keys():
-        seq = horizontal_db[sid]
+    for sid,seq in horizontal_db.iteritems():
         
-        for event_index_i in range(len(seq)):
-            event_i = seq[event_index_i]
+        for event_index_i,event_i in enumerate(seq):
                 
-            for event_index_j in range(event_index_i+1,len(seq)):
+            for event_index_j,event_j in enumerate(seq[event_index_i+1:]):
                 event_j = seq[event_index_j]
                         
-                if seq[event_index_i][1] <= seq[event_index_j][1]:
+                if event_i[1] <= event_j[1]:
                     two_seq = event_i[0]+event_j[0]
                 else:
                     two_seq = event_j[0]+event_i[0]
