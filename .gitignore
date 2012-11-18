@@ -1,5 +1,6 @@
 *.py[cod]
 *.ipynb
+*.swp
 
 # C extensions
 *.so
