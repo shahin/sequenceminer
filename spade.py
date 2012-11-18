@@ -100,9 +100,7 @@ def count_frequent_two_seq(id_list,support_threshold):
     for sid,seq in horizontal_db.iteritems():
         
         for event_index_i,event_i in enumerate(seq):
-                
             for event_index_j,event_j in enumerate(seq[event_index_i+1:]):
-                event_j = seq[event_index_j]
                         
                 if event_i[1] <= event_j[1]:
                     two_seq = event_i[0]+event_j[0]
@@ -125,36 +123,40 @@ def temporal_join(id_list_i,id_list_j):
     IdLists.
     '''
 
-    new_id_list = IdList({})
+    join_id_list = IdList({})
     
-    atom_i = id_list_i[0]['item']
-    atom_j = id_list_j[0]['item']
+    seq_i = id_list_i[0]['item']
+    seq_j = id_list_j[0]['item']
     
-    for event_index_i in range(len(id_list_i)):
-        for event_index_j in range(len(id_list_j)):
-                                    
-            event_i = id_list_i[event_index_i]
-            event_j = id_list_j[event_index_j]
+    for event_index_i,event_i in enumerate(id_list_i):
+        for event_index_j,event_j in enumerate(id_list_j):
     
             if event_i['sid'] == event_j['sid']:
                                         
                 sid = event_i['sid']
-                new_atom = {}
+                super_seq = tuple() 
+                super_seq_event = {}
             
                 # these two atoms occur in the same sequence
                 # if they occur at different times (different eids), then
                 # their combination atom has the later eid by Corollary 1 (Zaki 2001)
                 if event_i['eid'] > event_j['eid']:
-                    new_atom = {'item':atom_j+tuple(atom_i[-1]),'sid':sid,'eid':event_i['eid']}
+                    super_seq = seq_j + tuple(seq_i[-1])
+                    super_seq_event = {'sid':sid,'eid':event_i['eid']}
+
                 elif event_i['eid'] < event_j['eid']:
-                    new_atom = {'item':atom_i+tuple(atom_j[-1]),'sid':sid,'eid':event_j['eid']}
-                elif atom_i[-1] != atom_j[-1]:
-                    new_atom = {'item':(atom_i+atom_j),'sid':sid,'eid':event_j['eid']}
-        
-                if len(new_atom) > 0:
-                    new_id_list.add([new_atom])
+                    super_seq = seq_i + tuple(seq_j[-1])
+                    super_seq_event = {'sid':sid,'eid':event_j['eid']}
+
+                elif seq_i[-1] != seq_j[-1]:
+                    super_seq = (seq_i + seq_j)        
+                    super_seq_event = {'sid':sid,'eid':event_j['eid']}
+
+                if len(super_seq) > 0:
+                    join_id_list_entry = dict([('item',super_seq)] + super_seq_event.items())
+                    join_id_list.add([join_id_list_entry])
                 
-    return new_id_list
+    return join_id_list
 
 def enumerate_frequent_seq(id_list,support_threshold):
     '''Recursively traverse the sequence lattice, generating frequent n+1-length
