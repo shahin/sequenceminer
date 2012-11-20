@@ -65,8 +65,8 @@ def subset_to_support(atom_id_list,support_threshold):
 
     subsetted = IdList({})
     
-    for atom in atom_id_list:
-        if len(atom_id_list[atom]) >= support_threshold:
+    for atom,events in atom_id_list.items():
+        if len(set([event['sid'] for event in events])) >= support_threshold:
             subsetted.add(atom_id_list[atom])
                     
     return subsetted
