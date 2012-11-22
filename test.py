@@ -8,12 +8,12 @@ class TestSPADE(unittest.TestCase):
         '''Test identification of frequent one-element sequences.'''
 
         sequences = [
-            ('A',),
-            ('B',),
-            ('A',),
-            ('C',),
-            ('A',),
-            ('B',)
+            (0,('A',)),
+            (1,('B',)),
+            (2,('A',)),
+            (3,('C',)),
+            (4,('A',)),
+            (5,('B',))
             ]
 
         self.assertEqual(spade(sequences,2),set([('A',),('B',)]))
@@ -22,10 +22,10 @@ class TestSPADE(unittest.TestCase):
         '''Test identification of frequent two-element sequences.'''
 
         sequences = [
-            ('A','B',),
-            ('B','A',),
-            ('A','B',),
-            ('B',)
+            (0,('A','B',)),
+            (1,('B','A',)),
+            (2,('A','B',)),
+            (3,('B',))
             ]
 
         self.assertEqual(spade(sequences,2),set([('A',),('B',),('A','B',)]))
@@ -34,8 +34,8 @@ class TestSPADE(unittest.TestCase):
         '''Test identification of frequent sequences with more than two elements.'''
 
         sequences = [
-            ('A','B','C','D',),
-            ('A','B','C','D',),
+            (0,('A','B','C','D',)),
+            (1,('A','B','C','D',)),
             ]
 
         self.assertEqual(spade(sequences,2),set([
@@ -49,53 +49,64 @@ class TestSPADE(unittest.TestCase):
     def test_temporal_join(self):
         '''Test temporal joins of sequence ID lists.'''
 
-        from spade import temporal_join
+        from spade import temporal_join,Element,Event
 
         # simple join of disjoint sequences
-        id_list_i = [{'item':('A',),'sid':1,'eid':0}]
-        id_list_j = [{'item':('B',),'sid':1,'eid':1}]
-        join_result = temporal_join(id_list_i,id_list_j)
+        element_i = Element(('A',),Event(sid=1,eid=0))
+        element_j = Element(('B',),Event(sid=1,eid=1))
+        join_result = temporal_join(element_i,element_j)
 
-        self.assertEqual(join_result,
-            { ('A','B',): [{'item':('A','B',),'sid':1,'eid':1}] })
+        self.assertEqual(join_result.values(),[
+            Element(('A','B',),Event(sid=1,eid=1))
+            ])
 
         # join with one overlapping element
-        id_list_i = [{'item':('A','B',),'sid':1,'eid':1}]
-        id_list_j = [{'item':('B','C',),'sid':1,'eid':2}]
-        join_result = temporal_join(id_list_i,id_list_j)
+        element_i = Element(('A','B',),Event(sid=1,eid=1))
+        element_j = Element(('B','C',),Event(sid=1,eid=2))
+        join_result = temporal_join(element_i,element_j)
 
-        self.assertEqual(join_result,
-            { ('A','B','C',): [{'item':('A','B','C',),'sid':1,'eid':2}] })
+        self.assertEqual(join_result.values(),[ 
+            Element(('A','B','C',),Event(sid=1,eid=2))
+            ])
 
         # join with two overlapping elements
-        id_list_i = [{'item':('A','B','C',),'sid':1,'eid':2}]
-        id_list_j = [{'item':('B','C','D',),'sid':1,'eid':3}]
-        join_result = temporal_join(id_list_i,id_list_j)
+        element_i = Element(('A','B','C',),Event(sid=1,eid=2))
+        element_j = Element(('B','C','D',),Event(sid=1,eid=3))
+        join_result = temporal_join(element_i,element_j)
 
-        self.assertEqual(join_result,
-            { ('A','B','C','D',): [{'item':('A','B','C','D',),'sid':1,'eid':3}] })
+        self.assertEqual(join_result.values(),[ 
+            Element(('A','B','C','D',),Event(sid=1,eid=3))
+            ])
 
 
     def test_subset_to_support(self):
         '''Test subsetting a list of sequences to those that meet or exceed a given support threshold.'''
         
-        from spade import subset_to_support,IdList
+        from spade import subset_to_support,Element,Event
+        from keydefaultdict import _KeyDefaultDict
 
         # ensure that multiple occurrences in the same sequence do not inflate support
         sequences = [
-            ('A',),
-            ('B',),
-            ('A',),
-            ('C','C',)
+            (0,('A',)),
+            (1,('B',)),
+            (2,('A',)),
+            (3,('C','C',))
             ]
         
-        id_list = IdList(sequences)
+        # parse input sequences into individual item Elements
+        elements = _KeyDefaultDict(Element) 
 
-        id_list_subset = subset_to_support(id_list,2)
+        for sid,sequence in sequences:
+            for eid,item in enumerate(sequence):
+                elements[tuple(item)] |= Element(tuple(item),Event(sid=sid,eid=eid))
 
-        self.assertEqual(id_list_subset,
-            { ('A',): [{'item':('A',),'sid':0,'eid':0},{'item':('A',),'sid':2,'eid':0}] })
+        
+        # identify frequent single elements
+        elements = subset_to_support(elements,2)
 
+        self.assertEqual(elements.values(),[
+            Element(('A',),Event(sid=0,eid=0),Event(sid=2,eid=0)),
+            ])
 
 
 if __name__ == '__main__':

@@ -1,101 +1,72 @@
 import collections
+from keydefaultdict import _KeyDefaultDict 
 
-class IdList(collections.Mapping):
-    '''Dictionary implementation for ID Lists as described in Zaki (2001) that
-    helps with bookkeeping and provides descriptive semantics.'''
+Event = collections.namedtuple('Event','sid eid')
 
-    def __init__(self,sequences):
-        '''Given a list of sequences, create a dictionary of (sid,eid) pairs
-        for each atom in the sequence.
+class Element(object):
+    '''An element of the set of all possible subsequences, and a description of
+    where that element occurs in the input sequences.
+    '''
+
+    def __init__(self,seq,*events):
+
+        self.seq = seq
+        self.events = set()
+
+        for event in events:
+            self.events.add(event)
+
+    def __ior__(self,other_element):
+        '''Implements the assignment operator |= by returning an Element whose
+        events attribute is a union of the events of both input Elements.
         '''
-            
-        self.events = {}
 
-        for seq_index in range(len(sequences)):
-            seq = sequences[seq_index]
-
-            for element_index in range(len(seq)):
-                element = seq[element_index]
-
-                for item in element:
-
-                    event = {'item':tuple(item),'sid':seq_index,'eid':element_index}
-                    if event['item'] in self.events:
-                        self.events[event['item']].append(event)
-                    else:
-                        self.events[event['item']] = [event]
-
-    def add(self,atoms):
-
-        for atom in atoms:
-            if atom['item'] in self.events:
-
-                atom_events = self.events[atom['item']]
-                if (atom['sid'],atom['eid']) not in [(event['sid'],event['eid']) for event in atom_events]:
-                    self.events[atom['item']].append(atom)
-
-            else:
-                self.events[atom['item']] = [atom]
-
-
-    def __getitem__(self,item):
-
-        return self.events[item]
-
-    def __iter__(self):
-
-        return iter(self.events)
-
-    def __len__(self):
-
-        return len(self.events)
-
-    def __str__(self):
-
-        return str(self.events)
+        self.events |= other_element.events
+        return self
 
     def __repr__(self):
 
-        return self.events.__repr__()
+        return self.__dict__.__repr__()
 
-def subset_to_support(atom_id_list,support_threshold):
+    def __eq__(self,other):
+
+        return (self.seq == other.seq and self.events == other.events)
+
+      
+def subset_to_support(elements,support_threshold):
     '''Given an IdList, return an IdList containing only those atoms which
     meet the support threshold.
     '''
 
-    subsetted = IdList({})
-    
-    for atom,events in atom_id_list.items():
-        if len(set([event['sid'] for event in events])) >= support_threshold:
-            subsetted.add(atom_id_list[atom])
+    subsetted = _KeyDefaultDict(Element)
+
+    for element_name,element in elements.items():
+        support = len(set([event.sid for event in element.events]))
+        if support >= support_threshold:
+            subsetted[element_name] = element
                     
     return subsetted
 
-def count_frequent_two_seq(id_list,support_threshold):
+def count_frequent_two_seq(elements,support_threshold):
     '''Given an IdList of atoms, return a dictionary of two-sequences as keys with
     the frequency of each two-sequence as the value.
     '''
 
-    # Given an IdList, convert it to a horizontal IdList in order to
-    # count the frequency of each two-sequences of atoms.
-
+    # Given an dictionary of Elements, convert it to a horizontal ID list in order to
+    # count the frequency of each two-sequence of atoms.
     horizontal_db = {} 
 
-    for atom,events in id_list.iteritems():
+    for element_name,element in elements.items():
                 
-        for event in events:
+        for event in element.events:
 
-            sid = event['sid']
-            eid = event['eid']
+            if event.sid not in horizontal_db:
+                 horizontal_db[event.sid] = []
 
-            if sid not in horizontal_db:
-                 horizontal_db[sid] = []
-
-            horizontal_db[sid].append((atom,eid))
+            horizontal_db[event.sid].append((element_name,event.eid))
 
     # create counts using horizontal_db
-
-    counts = {}
+    counts = collections.defaultdict(int)
     
     for sid,seq in horizontal_db.iteritems():
         
@@ -107,124 +78,122 @@ def count_frequent_two_seq(id_list,support_threshold):
                 else:
                     two_seq = event_j[0]+event_i[0]
 
-                if two_seq in counts:
-                    counts[two_seq] += 1
-                else:
-                    counts[two_seq] = 1
+                counts[two_seq] += 1
 
     # this is followed by temporal joins between atoms in pairs, so
     # include only unique combinations
     return {tuple(sorted(two_seq)) for two_seq,count in counts.iteritems() if count >= support_threshold}
 
 
-def temporal_join(id_list_i,id_list_j):
-    '''Given two IdLists, return a dictionary of new IdLists indexed by
-    tuples of the new atoms formed by a temporal join of the original
-    IdLists.
+def temporal_join(element_i,element_j):
+    '''Given two elements, return a dictionary of new elements indexed by
+    their corresponding item sequences.
     '''
 
-    join_id_list = IdList({})
+    join_results = _KeyDefaultDict(Element)
     
-    seq_i = id_list_i[0]['item']
-    seq_j = id_list_j[0]['item']
+    for event_index_i,event_i in enumerate(element_i.events):
+        for event_index_j,event_j in enumerate(element_j.events):
     
-    for event_index_i,event_i in enumerate(id_list_i):
-        for event_index_j,event_j in enumerate(id_list_j):
-    
-            if event_i['sid'] == event_j['sid']:
+            if event_i.sid == event_j.sid:
                                         
-                sid = event_i['sid']
-                super_seq = tuple() 
-                super_seq_event = {}
+                sid = event_i.sid
+                superseq = tuple() 
+                superseq_event = tuple()
             
                 # these two atoms occur in the same sequence
                 # if they occur at different times (different eids), then
                 # their combination atom has the later eid by Corollary 1 (Zaki 2001)
-                if event_i['eid'] > event_j['eid']:
-                    super_seq = seq_j + tuple(seq_i[-1])
-                    super_seq_event = {'sid':sid,'eid':event_i['eid']}
+                if event_i.eid > event_j.eid:
+                    superseq = element_j.seq + tuple(element_i.seq[-1])
+                    superseq_event = Event(sid=sid,eid=event_i.eid)
 
-                elif event_i['eid'] < event_j['eid']:
-                    super_seq = seq_i + tuple(seq_j[-1])
-                    super_seq_event = {'sid':sid,'eid':event_j['eid']}
+                elif event_i.eid < event_j.eid:
+                    superseq = element_i.seq + tuple(element_j.seq[-1])
+                    superseq_event = Event(sid=sid,eid=event_j.eid)
 
-                elif seq_i[-1] != seq_j[-1]:
-                    super_seq = (seq_i + seq_j)        
-                    super_seq_event = {'sid':sid,'eid':event_j['eid']}
+                elif element_i.seq[-1] != element_j.seq[-1]:
+                    superseq = (element_i.seq + element_j.seq)        
+                    superseq_event = Event(sid=sid,eid=event_j.eid)
 
-                if len(super_seq) > 0:
-                    join_id_list_entry = dict([('item',super_seq)] + super_seq_event.items())
-                    join_id_list.add([join_id_list_entry])
+                if len(superseq) > 0:
+                    join_results[superseq] |= Element(superseq,superseq_event)
                 
-    return join_id_list
+    return join_results
 
-def enumerate_frequent_seq(id_list,support_threshold):
+def enumerate_frequent_seq(elements,support_threshold):
     '''Recursively traverse the sequence lattice, generating frequent n+1-length
     sequences from n-length sequences provided in the id_list parameter.'''
 
-    frequent_seq = IdList({})
+    frequent_elements = _KeyDefaultDict(Element)
 
-    for atom_index_i in range(len(id_list)):
-        atom_i = id_list.keys()[atom_index_i]
+    for element_index_i,seq_i in enumerate(elements.keys()):
 
-        frequent_seq_inner = IdList({})
+        frequent_elements_inner = _KeyDefaultDict(Element)
             
-        for atom_index_j in range(atom_index_i+1,len(id_list)):
-            atom_j = id_list.keys()[atom_index_j]
-            #print "atom_i: " + str(atom_i) + " atom_j: " + str(atom_j)
+        for element_index_j,seq_j in enumerate(elements.keys()[element_index_i+1:]):
 
-            R = temporal_join(id_list[atom_i],id_list[atom_j])
+            R = temporal_join(elements[seq_i],elements[seq_j])
 
-            for seq,events in R.items():
-                n_distinct_sequences = len(set([event['sid'] for event in events]))
-                if n_distinct_sequences >= support_threshold and seq not in frequent_seq_inner:
-                    frequent_seq_inner.add(events)
+            for seq,element in R.items():
+                support = len(set([event.sid for event in element.events]))
+                if support >= support_threshold:
+                    frequent_elements_inner[seq] |= element
 
-        for item,idlist in frequent_seq_inner.events.items():
-            frequent_seq.add(idlist)
-        for item,idlist in enumerate_frequent_seq(frequent_seq_inner,support_threshold).events.items():
-            frequent_seq.add(idlist)
 
-    return frequent_seq
+        for seq,element in frequent_elements_inner.items():
+            frequent_elements[seq] |= element
+
+        for seq,element in enumerate_frequent_seq(frequent_elements_inner,support_threshold).items():
+            frequent_elements[seq] |= element
+
+    return frequent_elements
 
 
 def spade(sequences,support_threshold):
-    '''SPADE is performed in three distinct steps:
+    '''SPADE (Zaki 2001) is performed in three distinct steps:
     1. Identify frequent single elements.
     2. Identify frequent two-element sequences.
     3. Identify all remaining sequences of three elements or more.
     '''
 
+    # parse input sequences into individual item Elements
+    elements = _KeyDefaultDict(Element) 
+
+    for sid,sequence in sequences:
+        for eid,item in enumerate(sequence):
+            elements[tuple(item)] |= Element(tuple(item),Event(sid=sid,eid=eid))
+
     # identify frequent single elements
-    id_list_singles = subset_to_support(IdList(sequences),support_threshold)
+    elements = subset_to_support(elements,support_threshold)
 
     # identify frequent two-element sequences using a horizontal database
-    hid_list = count_frequent_two_seq(id_list_singles,support_threshold)
+    freq_elements_len_eq_2 = count_frequent_two_seq(elements,support_threshold)
 
     # generate ID lists for frequent two-element sequences discovered above
-    id_list_pairs = IdList({})
+    elements_len_eq_2 = _KeyDefaultDict(Element)
 
-    for two_seq in hid_list:
+    for two_seq in freq_elements_len_eq_2:
 
-        R = temporal_join(id_list_singles[tuple(two_seq[0])],id_list_singles[tuple(two_seq[1])])
+        R = temporal_join(elements[tuple(two_seq[0])],elements[tuple(two_seq[1])])
 
-        for seq,events in R.items():
-            n_distinct_sequences = len(set([event['sid'] for event in events]))
-            if n_distinct_sequences >= support_threshold and seq not in id_list_pairs:
-                id_list_pairs.add(events)
+        for seq,element in R.items():
+            support = len(set([event.sid for event in element.events]))
+            if support >= support_threshold:
+                elements_len_eq_2[seq] |= element
 
     # identify and generate ID lists for all remaining sequences
-    freq = enumerate_frequent_seq(id_list_pairs,support_threshold)
+    freq = enumerate_frequent_seq(elements_len_eq_2,support_threshold)
 
     # collect all identified sequences of any length
-    for item,idlist in id_list_pairs.events.items():
-        freq.add(idlist)
+    for seq,element in elements_len_eq_2.items():
+        freq[seq] |= element
 
-    for item,idlist in id_list_singles.events.items():
-        freq.add(idlist)
+    for seq,element in elements.items():
+        freq[seq] |= element
 
     # return frequent sequences
-    return set(freq.events.keys())
+    return set(freq.keys())
 
 
 if __name__ == "__main__":
@@ -232,10 +201,11 @@ if __name__ == "__main__":
     import pprint as pp
 
     sequences = [
-        ('A','B',),
-        ('B','A',),
-        ('A','B',),
-        ('B',)
+        (0,('A','B',)),
+        (1,('B','A',)),
+        (2,('A','B',)),
+        (3,('B',))
         ]
 
     pp.pprint(spade(sequences,2))
+
