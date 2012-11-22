@@ -217,13 +217,35 @@ def read_sequences(filename):
 
     return sequences
 
+def main(argv):
+
+    import pprint as pp
+    import argparse
+
+    input_sequence_file = None
+    support_threshold = None
+
+    parser = argparse.ArgumentParser(description=
+            'Generate frequent subsequences meeting the minimum support threshold.'
+            )
+
+    parser.add_argument('--file',dest='input_sequence_file',
+            help='A comma-delimited text file containing input sequences.',
+            required=True)
+    parser.add_argument('--support',dest='support_threshold',type=int,
+            help='The minimum number of occurrences of a frequent sequence.',
+            required=True)
+
+    args = parser.parse_args(argv)
+
+    sequences = read_sequences(args.input_sequence_file)
+
+    pp.pprint(spade(sequences,args.support_threshold))
+
 
 if __name__ == "__main__":
 
     import sys
-    import pprint as pp
 
-    sequences = read_sequences(sys.argv[1])
-
-    pp.pprint(spade(sequences,2))
+    main(sys.argv[1:])
 
