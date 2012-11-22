@@ -47,6 +47,7 @@ def subset_to_support(elements,support_threshold):
                     
     return subsetted
 
+
 def count_frequent_two_seq(elements,support_threshold):
     '''Given an IdList of atoms, return a dictionary of two-sequences as keys with
     the frequency of each two-sequence as the value.
@@ -121,6 +122,7 @@ def temporal_join(element_i,element_j):
                 
     return join_results
 
+
 def enumerate_frequent_seq(elements,support_threshold):
     '''Recursively traverse the sequence lattice, generating frequent n+1-length
     sequences from n-length sequences provided in the id_list parameter.'''
@@ -150,7 +152,7 @@ def enumerate_frequent_seq(elements,support_threshold):
     return frequent_elements
 
 
-def spade(sequences,support_threshold):
+def mine(sequences,support_threshold):
     '''SPADE (Zaki 2001) is performed in three distinct steps:
     1. Identify frequent single elements.
     2. Identify frequent two-element sequences.
@@ -193,7 +195,8 @@ def spade(sequences,support_threshold):
         freq[seq] |= element
 
     # return frequent sequences
-    return set(freq.keys())
+    return freq
+
 
 def read_sequences(filename):
     '''Read sequences from a CSV.
@@ -217,13 +220,11 @@ def read_sequences(filename):
 
     return sequences
 
+
 def main(argv):
 
     import pprint as pp
     import argparse
-
-    input_sequence_file = None
-    support_threshold = None
 
     parser = argparse.ArgumentParser(description=
             'Generate frequent subsequences meeting the minimum support threshold.'
@@ -237,10 +238,10 @@ def main(argv):
             required=True)
 
     args = parser.parse_args(argv)
-
     sequences = read_sequences(args.input_sequence_file)
 
-    pp.pprint(spade(sequences,args.support_threshold))
+    frequent_sequences = mine(sequences,args.support_threshold)
+    pp.pprint(frequent_sequences.keys())
 
 
 if __name__ == "__main__":
