@@ -195,17 +195,35 @@ def spade(sequences,support_threshold):
     # return frequent sequences
     return set(freq.keys())
 
+def read_sequences(filename):
+    '''Read sequences from a CSV.
+
+    The CSV contains one line per sequence with columns defined as follows:
+    - First column is a unique integer as sequence ID
+    - Each remaining column contains an item as a character string with columns
+      arranged in sequence order
+    '''
+
+    import csv
+
+    sequences = []
+
+    with open(filename) as f:
+        seqreader = csv.reader(f,delimiter=',')
+        for seqline in seqreader:
+            sequences.append(
+                    tuple([ seqline[0],tuple(seqline[1:]) ])
+                    )
+
+    return sequences
+
 
 if __name__ == "__main__":
 
+    import sys
     import pprint as pp
 
-    sequences = [
-        (0,('A','B',)),
-        (1,('B','A',)),
-        (2,('A','B',)),
-        (3,('B',))
-        ]
+    sequences = read_sequences(sys.argv[1])
 
     pp.pprint(spade(sequences,2))
 
