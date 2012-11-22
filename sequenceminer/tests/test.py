@@ -1,4 +1,4 @@
-from spade import spade
+from sequenceminer.miner import mine
 import unittest
 
 class TestSPADE(unittest.TestCase):
@@ -16,7 +16,9 @@ class TestSPADE(unittest.TestCase):
             (5,('B',))
             ]
 
-        self.assertEqual(spade(sequences,2),set([('A',),('B',)]))
+        self.assertEqual(set(mine(sequences,2).keys()),set([
+            ('A',),('B',)
+            ]))
 
     def test_cardinality_eq_2(self):
         '''Test identification of frequent two-element sequences.'''
@@ -28,7 +30,9 @@ class TestSPADE(unittest.TestCase):
             (3,('B',))
             ]
 
-        self.assertEqual(spade(sequences,2),set([('A',),('B',),('A','B',)]))
+        self.assertEqual(set(mine(sequences,2).keys()),set([
+            ('A',),('B',),('A','B',)
+            ]))
 
     def test_cardinality_gt_2(self):
         '''Test identification of frequent sequences with more than two elements.'''
@@ -38,7 +42,7 @@ class TestSPADE(unittest.TestCase):
             (1,('A','B','C','D',)),
             ]
 
-        self.assertEqual(spade(sequences,2),set([
+        self.assertEqual(set(mine(sequences,2).keys()),set([
             ('A',),('B',),('C',),('D',),
             ('A','B',),('B','D',),('B','C',),('A','C',),('A','D',),('C','D',),
             ('A','B','C',),('B','C','D',),('A','B','D',),('A','C','D',),
@@ -49,7 +53,7 @@ class TestSPADE(unittest.TestCase):
     def test_temporal_join(self):
         '''Test temporal joins of sequence ID lists.'''
 
-        from spade import temporal_join,Element,Event
+        from sequenceminer.miner import temporal_join,Element,Event
 
         # simple join of disjoint sequences
         element_i = Element(('A',),Event(sid=1,eid=0))
@@ -82,8 +86,8 @@ class TestSPADE(unittest.TestCase):
     def test_subset_to_support(self):
         '''Test subsetting a list of sequences to those that meet or exceed a given support threshold.'''
         
-        from spade import subset_to_support,Element,Event
-        from keydefaultdict import _KeyDefaultDict
+        from sequenceminer.miner import subset_to_support,Element,Event
+        from sequenceminer.keydefaultdict import _KeyDefaultDict
 
         # ensure that multiple occurrences in the same sequence do not inflate support
         sequences = [
