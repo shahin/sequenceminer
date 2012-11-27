@@ -1,19 +1,19 @@
 from sequenceminer.miner import mine
 import unittest
 
-class TestSPADE(unittest.TestCase):
-    '''Functional tests for SPADE.'''
+class TestMiner(unittest.TestCase):
+    '''Functional tests for Miner.'''
 
     def test_cardinality_eq_1(self):
         '''Test identification of frequent one-element sequences.'''
 
         sequences = [
-            (0,('A',)),
-            (1,('B',)),
-            (2,('A',)),
-            (3,('C',)),
-            (4,('A',)),
-            (5,('B',))
+            (0,5,('A',)),
+            (1,2,('B',)),
+            (2,0,('A',)),
+            (3,5,('C',)),
+            (4,15,('A',)),
+            (5,15,('B',))
             ]
 
         self.assertEqual(set(mine(sequences,2).keys()),set([
@@ -24,10 +24,13 @@ class TestSPADE(unittest.TestCase):
         '''Test identification of frequent two-element sequences.'''
 
         sequences = [
-            (0,('A','B',)),
-            (1,('B','A',)),
-            (2,('A','B',)),
-            (3,('B',))
+            (0,0,('A',)),
+            (0,1,('B',)),
+            (1,0,('B',)),
+            (1,1,('A',)),
+            (2,0,('A',)),
+            (2,1,('B',)),
+            (3,0,('B',))
             ]
 
         self.assertEqual(set(mine(sequences,2).keys()),set([
@@ -38,8 +41,14 @@ class TestSPADE(unittest.TestCase):
         '''Test identification of frequent sequences with more than two elements.'''
 
         sequences = [
-            (0,('A','B','C','D',)),
-            (1,('A','B','C','D',)),
+            (0,0,('A',)),
+            (0,1,('B',)),
+            (0,2,('C',)),
+            (0,3,('D',)),
+            (1,0,('A',)),
+            (1,1,('B',)),
+            (1,2,('C',)),
+            (1,3,('D',)),
             ]
 
         self.assertEqual(set(mine(sequences,2).keys()),set([
@@ -49,71 +58,7 @@ class TestSPADE(unittest.TestCase):
             ('A','B','C','D',)
             ]))
 
-
-    def test_temporal_join(self):
-        '''Test temporal joins of sequence ID lists.'''
-
-        from sequenceminer.miner import temporal_join,Element,Event
-
-        # simple join of disjoint sequences
-        element_i = Element(('A',),Event(sid=1,eid=0))
-        element_j = Element(('B',),Event(sid=1,eid=1))
-        join_result = temporal_join(element_i,element_j)
-
-        self.assertEqual(join_result.values(),[
-            Element(('A','B',),Event(sid=1,eid=1))
-            ])
-
-        # join with one overlapping element
-        element_i = Element(('A','B',),Event(sid=1,eid=1))
-        element_j = Element(('B','C',),Event(sid=1,eid=2))
-        join_result = temporal_join(element_i,element_j)
-
-        self.assertEqual(join_result.values(),[ 
-            Element(('A','B','C',),Event(sid=1,eid=2))
-            ])
-
-        # join with two overlapping elements
-        element_i = Element(('A','B','C',),Event(sid=1,eid=2))
-        element_j = Element(('B','C','D',),Event(sid=1,eid=3))
-        join_result = temporal_join(element_i,element_j)
-
-        self.assertEqual(join_result.values(),[ 
-            Element(('A','B','C','D',),Event(sid=1,eid=3))
-            ])
-
-
-    def test_subset_to_support(self):
-        '''Test subsetting a list of sequences to those that meet or exceed a given support threshold.'''
-        
-        from sequenceminer.miner import subset_to_support,Element,Event
-        from sequenceminer.keydefaultdict import _KeyDefaultDict
-
-        # ensure that multiple occurrences in the same sequence do not inflate support
-        sequences = [
-            (0,('A',)),
-            (1,('B',)),
-            (2,('A',)),
-            (3,('C','C',))
-            ]
-        
-        # parse input sequences into individual item Elements
-        elements = _KeyDefaultDict(Element) 
-
-        for sid,sequence in sequences:
-            for eid,item in enumerate(sequence):
-                elements[tuple(item)] |= Element(tuple(item),Event(sid=sid,eid=eid))
-
-        
-        # identify frequent single elements
-        elements = subset_to_support(elements,2)
-
-        self.assertEqual(elements.values(),[
-            Element(('A',),Event(sid=0,eid=0),Event(sid=2,eid=0)),
-            ])
-
-
 if __name__ == '__main__':
 
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestSPADE)
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestMiner)
     unittest.TextTestRunner(verbosity=2).run(suite)

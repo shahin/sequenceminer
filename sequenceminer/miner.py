@@ -99,8 +99,8 @@ def temporal_join(element_i,element_j):
             if event_i.sid == event_j.sid:
                                         
                 sid = event_i.sid
-                superseq = tuple() 
-                superseq_event = tuple()
+                superseqs = tuple()
+                superseqs_events = tuple()
             
                 # these two atoms occur in the same sequence
                 # if they occur at different times (different eids), then
@@ -108,17 +108,31 @@ def temporal_join(element_i,element_j):
                 if event_i.eid > event_j.eid:
                     superseq = element_j.seq + tuple(element_i.seq[-1])
                     superseq_event = Event(sid=sid,eid=event_i.eid)
+                    join_results[superseq] |= Element(superseq,superseq_event)
 
                 elif event_i.eid < event_j.eid:
                     superseq = element_i.seq + tuple(element_j.seq[-1])
                     superseq_event = Event(sid=sid,eid=event_j.eid)
+                    join_results[superseq] |= Element(superseq,superseq_event)
 
                 elif element_i.seq[-1] != element_j.seq[-1]:
-                    superseq = (element_i.seq + element_j.seq)        
+
                     superseq_event = Event(sid=sid,eid=event_j.eid)
 
-                if len(superseq) > 0:
-                    join_results[superseq] |= Element(superseq,superseq_event)
+                    # for coincident atoms, join the last element of one atom to the other
+                    # ensure that the itemset is sorted
+                    superseq_i = element_i.seq[:-1] + tuple([
+                        ''.join(sorted(element_i.seq[-1] + element_j.seq[-1]))
+                        ])
+                    join_results[superseq_i] |= Element(superseq_i,superseq_event)
+
+                    superseq_j = element_j.seq[:-1] + tuple([
+                        ''.join(sorted(element_i.seq[-1] + element_j.seq[-1]))
+                        ])
+
+                    # if both resulting atoms are identical, only add it once
+                    if superseq_j != superseq_i:
+                        join_results[superseq_j] |= Element(superseq_j,superseq_event)
                 
     return join_results
 
@@ -162,8 +176,8 @@ def mine(sequences,support_threshold):
     # parse input sequences into individual item Elements
     elements = _KeyDefaultDict(Element) 
 
-    for sid,sequence in sequences:
-        for eid,item in enumerate(sequence):
+    for sid,eid,itemset in sequences:
+        for item in itemset:
             elements[tuple(item)] |= Element(tuple(item),Event(sid=sid,eid=eid))
 
     # identify frequent single elements
@@ -202,7 +216,8 @@ def read_sequences(filename):
     '''Read sequences from a CSV.
 
     The CSV contains one line per sequence with columns defined as follows:
-    - First column is a unique integer as sequence ID
+    - First column is a unique integer as sequence ID (sid)
+    - Second column is a sequence-unique integer as event ID (eid)
     - Each remaining column contains an item as a character string with columns
       arranged in sequence order
     '''
@@ -215,7 +230,7 @@ def read_sequences(filename):
         seqreader = csv.reader(f,delimiter=',')
         for seqline in seqreader:
             sequences.append(
-                    tuple([ seqline[0],tuple(seqline[1:]) ])
+                    tuple([ seqline[0],seqline[1],tuple(seqline[2:]) ])
                     )
 
     return sequences
