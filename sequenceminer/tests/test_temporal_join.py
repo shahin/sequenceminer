@@ -14,7 +14,7 @@ class TestTemporalJoin(unittest.TestCase):
             Element(('A','B',),Event(sid=1,eid=1))
             ])
 
-    def test_join_overlap_2(self):
+    def test_join_overlap_1(self):
         '''join with one overlapping element'''
         element_i = Element(('A','B',),Event(sid=1,eid=1))
         element_j = Element(('B','C',),Event(sid=1,eid=2))
