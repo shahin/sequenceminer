@@ -58,6 +58,20 @@ class TestMiner(unittest.TestCase):
             ('A','B','C','D',)
             ]))
 
+    def test_itemsets(self):
+        '''Test identification of frequent sequences of itemsets.'''
+
+        sequences = [
+            (0,0,('A',)),
+            (0,1,('A','B',)),
+            ]
+
+        self.assertEqual(set(mine(sequences,1).keys()),set([
+            ('A',),('B',),
+            ('AB',),
+            ('A','A',),('A','AB',),('A','B',)
+            ]))
+
 if __name__ == '__main__':
 
     suite = unittest.TestLoader().loadTestsFromTestCase(TestMiner)

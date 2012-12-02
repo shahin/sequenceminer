@@ -122,12 +122,12 @@ def temporal_join(element_i,element_j):
                     # for coincident atoms, join the last element of one atom to the other
                     # ensure that the itemset is sorted
                     superseq_i = element_i.seq[:-1] + tuple([
-                        ''.join(sorted(element_i.seq[-1] + element_j.seq[-1]))
+                        ''.join(sorted(set(element_i.seq[-1] + element_j.seq[-1])))
                         ])
                     join_results[superseq_i] |= Element(superseq_i,superseq_event)
 
                     superseq_j = element_j.seq[:-1] + tuple([
-                        ''.join(sorted(element_i.seq[-1] + element_j.seq[-1]))
+                        ''.join(sorted(set(element_i.seq[-1] + element_j.seq[-1])))
                         ])
 
                     # if both resulting atoms are identical, only add it once
